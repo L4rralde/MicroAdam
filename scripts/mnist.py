@@ -4,6 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from utils.utils import DEVICE
+from micro_adam.micro_adam import MicroAdam
 
 
 class Mlp(nn.Module):
@@ -78,7 +79,7 @@ def train(
 def main():
     model = Mlp().to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = MicroAdam(model.parameters(), lr=1e-3)
     
 
     transform = transforms.Compose([

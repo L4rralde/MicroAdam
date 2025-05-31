@@ -2,6 +2,7 @@ import torch
 from torch.optim.optimizer import Optimizer
 import math
 
+
 class MicroAdam(Optimizer):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, compress_fn=None, decompress_fn=None):
         defaults = dict(lr=lr, betas=betas, eps=eps)
@@ -16,22 +17,22 @@ class MicroAdam(Optimizer):
             for p in group['params']:
                 if p.grad is None:
                     continue
-                grad = p.grad.data
                 state = self.state[p]
 
                 if len(state) == 0:
                     # Initialize state
                     state['step'] = 0
-                    state['exp_avg'] = torch.zeros_like(p.data, device=p.data.device)  # m_t
-                    state['exp_avg_sq'] = torch.zeros_like(p.data, device=p.data.device)  # v_t
-                    state['error_buffer'] = torch.zeros_like(p.data, device=p.data.device) # For feedback
+                    state['exp_avg'] = torch.zeros_like(p.data, device=p.data.device)  # m_0 = 0
+                    state['exp_avg_sq'] = torch.zeros_like(p.data, device=p.data.device)  # v_0 = 0
+                    state['error_buffer'] = torch.zeros_like(p.data, device=p.data.device) # For feedback. e1 = 0
 
-                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
+                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq'] #m_t, v_t
                 beta1, beta2 = group['betas']
                 state['step'] += 1
 
+                grad = p.grad.data #
                 # Optional error feedback mechanism
-                if self.decompress_fn and self.compress_fn:
+                if self.decompress_fn and self.compress_fn: #If (must be) provided
                     # Apply error feedback + compression
                     grad += state['error_buffer']
                     compressed_grad = self.compress_fn(grad)
