@@ -9,4 +9,4 @@ def get_device() -> str:
     return "cpu"
 
 
-DEVICE = get_device()
+DEVICE = "cpu"
