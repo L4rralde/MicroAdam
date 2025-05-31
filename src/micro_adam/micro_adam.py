@@ -2,7 +2,8 @@ import torch
 from torch.optim import Optimizer
 import math #really?
 
-qdtype = torch.uint32
+qdtype = torch.uint8
+
 
 class MicroAdam(torch.optim.Optimizer):
     def __init__(
@@ -28,49 +29,9 @@ class MicroAdam(torch.optim.Optimizer):
         #Q^{-1} procedure from pseudocode
         xq = xq.to(torch.float32)
         u = (Delta - delta + 1e-8)/15
-        x = (xq*u + delta).view(shape)
+        x = xq*u + delta
 
         return x
-
-    def sparse_grad(self, grad: torch.Tensor, k: int) -> torch.Tensor:
-        #flat_grad = grad.clone().view(-1)
-        flat_grad = grad.view(-1)
-        # Get indices of top-K largest absolute values
-        _, topk_idx = torch.topk(flat_grad.abs(), k)
-        # Save original values at top-K positions
-        topk_vals = flat_grad[topk_idx]
-        # Zero entire gradient
-        flat_grad.zero_()
-        # Restore top-K values to their original positions
-        flat_grad[topk_idx] = topk_vals
-        sparse_grad = flat_grad.view(grad.shape)
-        return sparse_grad
-
-    
-    def _quantize(self, x: torch.Tensor, k: int):
-        #here x should be $a$ from pseudocode
-        flat = x.view(-1)
-        topk_vals, topk_idx = torch.topk(flat.abs(), k) #Line 6 of pseudocode
-
-        #Next snippet looks like line 7 from pseudocode, but not actually.
-        #Here we are performing required ops to compute Delta and delta on a copy.
-        #So, looks like we are duplicating operations. FUTURE: To optimize.
-        mask = torch.zeros_like(flat, dtype=torch.bool, device=flat.device)
-        mask[topk_idx] = True
-        residual = flat.clone()
-        residual[mask] = 0
-
-        delta, Delta = residual.min(), residual.max() #Looks
-
-        e_quantized = self._Q(residual, delta, Delta)
-
-        return(
-            topk_idx, #I_t in pseudocode
-            flat[topk_idx], #V_t in pseudocode
-            e_quantized, #e_t in pseudocode
-            delta, #\delta
-            Delta #\Delta
-        )
 
     def step(self, closure = None):
         #Closure is added for compatibility. Here is not used at all.
@@ -78,9 +39,7 @@ class MicroAdam(torch.optim.Optimizer):
 
         for group in self.param_groups:
             #Taking parameters from model's buffers
-            lr, betas = group['lr'], group['betas'],
-            eps, k = group['eps'], group['k']
-            beta1, beta2 = betas
+            beta1, beta2 = group['betas']
 
             for p in group["params"]:
                 if p.grad is None:
@@ -94,7 +53,7 @@ class MicroAdam(torch.optim.Optimizer):
                     state["step"] = 0
                     state["exp_avg"] = torch.zeros_like(p.data) #m_0
                     state["exp_avg_sq"] = torch.zeros_like(p.data) #v_0
-                    state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype) #e_1. Error feedback
+                    state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype).view(-1) #e_1. Error feedback
                     state["delta"] = torch.tensor(0.0, device=p.device)
                     state["Delta"] = torch.tensor(0.0, device=p.device)
 
@@ -104,18 +63,14 @@ class MicroAdam(torch.optim.Optimizer):
 
                 #Following snippet is Line 4 from pseudo code
                 grad = p.grad.data
+                shape = grad.shape
+                flat_grad = grad.view(-1)
                 k = grad.numel()//100 + 1
 
-                #if self.grad_sparsing is None:
-                #    sparse_grad = grad
-                #else:
-                #    sparse_grad = self.sparse_grad(grad, grad.numel()//self.grad_sparsing)
-                #sparse_grad = grad
-
-                ef, delta, Delta = state["ef"], state["delta"], state["Delta"]
+                flat_ef, delta, Delta = state["ef"], state["delta"], state["Delta"]
 
                 #Line 5 from pseudo code
-                a = grad + self._Q_inv(ef, delta, Delta, grad.shape)
+                a = flat_grad + self._Q_inv(flat_ef, delta, Delta, shape)
                 
                 #Line 6 of pseudocode
                 flat_a = a.view(-1)
@@ -123,7 +78,7 @@ class MicroAdam(torch.optim.Optimizer):
                 topk_values = flat_a[topk_idx]
                 flat_topk_grad = torch.zeros_like(flat_a)
                 flat_topk_grad[topk_idx] = topk_values
-                topk_grad = flat_topk_grad.view(grad.shape)
+                topk_grad = flat_topk_grad.view(shape)
 
                 #Line 7 of pseudocode
                 mask = torch.zeros_like(
@@ -144,16 +99,6 @@ class MicroAdam(torch.optim.Optimizer):
                 state["delta"] = delta
                 state["Delta"] = Delta
 
-                #if 20 < grad.numel() < 100:
-                #    print()
-                #    print("-"*20)
-                #    print(k)
-                #    print(topk_values)
-                #    print(topk_grad)
-                #    print(flat_a)
-                #    print(state["ef"])
-                #    print(state["delta"], state["Delta"])
-
                 #Adam update
                 exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
                 exp_avg.mul_(beta1).add_(topk_grad, alpha=1 - beta1)
@@ -166,5 +111,4 @@ class MicroAdam(torch.optim.Optimizer):
 
                 p.data.addcdiv_(exp_avg, denom, value=-step_size)
 
-        
         return loss #Added for compatibility
