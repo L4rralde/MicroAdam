@@ -2,7 +2,6 @@ from sklearn.datasets import load_breast_cancer
 from torch.utils.data import Dataset, random_split
 
 
-
 class BreastCancerDatset(Dataset):
     def __init__(self, transforms=None):
         self.data = load_breast_cancer()
