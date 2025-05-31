@@ -31,7 +31,8 @@ class MicroAdam(torch.optim.Optimizer):
         return x
 
     def sparse_grad(self, grad: torch.Tensor, k: int) -> torch.Tensor:
-        flat_grad = grad.clone().view(-1)
+        #flat_grad = grad.clone().view(-1)
+        flat_grad = grad.view(-1)
         # Get indices of top-K largest absolute values
         _, topk_idx = torch.topk(flat_grad.abs(), k)
         # Save original values at top-K positions
