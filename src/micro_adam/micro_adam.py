@@ -94,25 +94,70 @@ class MicroAdam(torch.optim.Optimizer):
                     state["step"] = 0
                     state["exp_avg"] = torch.zeros_like(p.data) #m_0
                     state["exp_avg_sq"] = torch.zeros_like(p.data) #v_0
-                    state["ef"] = torch.zeros_like(p.data) #e_1. Error feedback
+                    state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype) #e_1. Error feedback
                     state["delta"] = torch.tensor(0.0, device=p.device)
                     state["Delta"] = torch.tensor(0.0, device=p.device)
-        
 
-                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
-                ef, delta, Delta = state["ef"], state["delta"], state["Delta"]
                 state["step"] += 1
-    
-                grad = p.grad.data
-                if self.grad_sparsing is None:
-                    sparse_grad = grad
-                else:
-                    sparse_grad = self.sparse_grad(grad, grad.numel()//self.grad_sparsing)
-                
 
-                # Adam update
-                exp_avg.mul_(beta1).add_(sparse_grad, alpha=1 - beta1)
-                exp_avg_sq.mul_(beta2).addcmul_(sparse_grad, sparse_grad, value=1 - beta2)
+                #No need to write for loop of line 3. Pytorch performs that.
+
+                #Following snippet is Line 4 from pseudo code
+                grad = p.grad.data
+                k = grad.numel()//100 + 1
+
+                #if self.grad_sparsing is None:
+                #    sparse_grad = grad
+                #else:
+                #    sparse_grad = self.sparse_grad(grad, grad.numel()//self.grad_sparsing)
+                #sparse_grad = grad
+
+                ef, delta, Delta = state["ef"], state["delta"], state["Delta"]
+
+                #Line 5 from pseudo code
+                a = grad + self._Q_inv(ef, delta, Delta, grad.shape)
+                
+                #Line 6 of pseudocode
+                flat_a = a.view(-1)
+                _, topk_idx = torch.topk(flat_a.abs(), k)
+                topk_values = flat_a[topk_idx]
+                flat_topk_grad = torch.zeros_like(flat_a)
+                flat_topk_grad[topk_idx] = topk_values
+                topk_grad = flat_topk_grad.view(grad.shape)
+
+                #Line 7 of pseudocode
+                mask = torch.zeros_like(
+                    flat_a,
+                    dtype=torch.bool,
+                    device=flat_a.device
+                )
+                mask[topk_idx] = True
+                flat_a[topk_idx] = 0
+                
+                #Line 8 of pseudocode
+                delta = flat_a.min()
+                Delta = flat_a.max()
+
+                #Line 9 of pseudocode
+                ef = self._Q(flat_a, delta, Delta)
+                state["ef"] = ef
+                state["delta"] = delta
+                state["Delta"] = Delta
+
+                #if 20 < grad.numel() < 100:
+                #    print()
+                #    print("-"*20)
+                #    print(k)
+                #    print(topk_values)
+                #    print(topk_grad)
+                #    print(flat_a)
+                #    print(state["ef"])
+                #    print(state["delta"], state["Delta"])
+
+                #Adam update
+                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
+                exp_avg.mul_(beta1).add_(topk_grad, alpha=1 - beta1)
+                exp_avg_sq.mul_(beta2).addcmul_(topk_grad, topk_grad, value=1 - beta2)
 
                 denom = exp_avg_sq.sqrt().add_(group['eps'])
                 bias_correction1 = 1 - beta1 ** state['step']
