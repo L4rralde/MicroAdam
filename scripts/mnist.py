@@ -70,7 +70,7 @@ def train(
                 val_loss += loss.data.item() * batch_size
                 num_val_elements += batch_size
         val_loss /= num_val_elements
-        val_losses.append(val_losses)
+        val_losses.append(val_loss)
         print(f"Epoch: {epoch}. Training loss: {train_loss: .3e}. Validation loss: {val_loss: .3e}")
 
     return train_losses, val_losses

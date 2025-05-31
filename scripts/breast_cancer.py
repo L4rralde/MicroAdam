@@ -27,7 +27,8 @@ def train(
     val_dataloader: object,
     loss_fn: object,
     optimizer: object,
-    epochs=100
+    epochs=100,
+    verbose=True
 ):
     train_losses = []
     val_losses = []
@@ -65,8 +66,9 @@ def train(
                 val_loss += loss.data.item() * batch_size
                 num_val_elements += batch_size
         val_loss /= num_val_elements
-        val_losses.append(val_losses)
-        print(f"Epoch: {epoch}. Training loss: {train_loss: .3e}. Validation loss: {val_loss: .3e}")
+        val_losses.append(val_loss)
+        if verbose:
+            print(f"Epoch: {epoch}. Training loss: {train_loss: .3e}. Validation loss: {val_loss: .3e}")
 
     return train_losses, val_losses
 
@@ -85,7 +87,7 @@ def main():
         val_dataloader = testloader,
         loss_fn = loss_fn,
         optimizer = optimizer,
-        epochs = 500
+        epochs = 1000
     )
 
 

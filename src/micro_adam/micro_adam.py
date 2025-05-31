@@ -8,10 +8,12 @@ class MicroAdam(torch.optim.Optimizer):
     def __init__(
         self,
         params,
-        lr = 1e-3, betas = (0.9, 0.999), eps=1e-8, k=10
+        lr = 1e-3, betas = (0.9, 0.999), eps=1e-8, k=10,
+        grad_sparsing = 100
     ):
         defaults = dict(lr=lr, betas=betas, eps=eps, k=k)
         super(MicroAdam, self).__init__(params, defaults)
+        self.grad_sparsing = grad_sparsing
 
     def _Q(self, x: torch.Tensor, delta: float, Delta: float) -> torch.Tensor:
         #Q procedure from pseudocode
@@ -102,7 +104,11 @@ class MicroAdam(torch.optim.Optimizer):
                 state["step"] += 1
     
                 grad = p.grad.data
-                sparse_grad = self.sparse_grad(grad, grad.numel()//100)
+                if self.grad_sparsing is None:
+                    sparse_grad = grad
+                else:
+                    sparse_grad = self.sparse_grad(grad, grad.numel()//self.grad_sparsing)
+                
 
                 # Adam update
                 exp_avg.mul_(beta1).add_(sparse_grad, alpha=1 - beta1)
