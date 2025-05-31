@@ -4,14 +4,18 @@ from torch.utils.data import DataLoader
 
 from utils.utils import DEVICE
 from micro_adam.micro_adam import MicroAdam
-from dataset.iris import train_dataset, test_dataset
+from dataset.breast_cancer import train_dataset, test_dataset
 
 
 class Mlp(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer = nn.Linear(4, 3)
-    
+        self.layer = nn.Sequential(
+            nn.Linear(30, 8),
+            nn.ReLU(),
+            nn.Linear(8, 2),
+        )
+
     def forward(self, x):
         x = x.float()
         return self.layer(x)
@@ -72,8 +76,8 @@ def main():
     loss_fn = nn.CrossEntropyLoss()
     optimizer = MicroAdam(model.parameters(), lr=1e-3)
 
-    trainloader = DataLoader(train_dataset, batch_size=8)
-    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=8, shuffle=False)
+    trainloader = DataLoader(train_dataset, batch_size=16)
+    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     train(
         model = model,
@@ -81,10 +85,9 @@ def main():
         val_dataloader = testloader,
         loss_fn = loss_fn,
         optimizer = optimizer,
-        epochs = 2000
+        epochs = 500
     )
 
 
 if __name__ == '__main__':
-    print(DEVICE)
     main()
