@@ -23,7 +23,7 @@ class MicroAdam(torch.optim.Optimizer):
             quantized = ((x - delta)*u_inv).round().clamp(0, 15).to(qdtype)
         return quantized
 
-    def _Q_inv(self, xq: torch.Tensor, delta: float, Delta: float, shape: tuple):
+    def _Q_inv(self, xq: torch.Tensor, delta: float, Delta: float):
         #Q^{-1} procedure from pseudocode
         xq = xq.to(torch.float32)
         u = (Delta - delta + 1e-8)/15
@@ -52,8 +52,8 @@ class MicroAdam(torch.optim.Optimizer):
                     state["exp_avg"] = torch.zeros_like(p.data) #m_0
                     state["exp_avg_sq"] = torch.zeros_like(p.data) #v_0
                     state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype).view(-1) #e_1. Error feedback
-                    state["delta"] = torch.tensor(0.0, device=p.device)
-                    state["Delta"] = torch.tensor(0.0, device=p.device)
+                    state["delta"] = torch.tensor(0.0)
+                    state["Delta"] = torch.tensor(0.0)
 
                 state["step"] += 1
 
@@ -68,7 +68,7 @@ class MicroAdam(torch.optim.Optimizer):
                 flat_ef, delta, Delta = state["ef"], state["delta"], state["Delta"]
 
                 #Line 5 from pseudo code
-                a = flat_grad + self._Q_inv(flat_ef, delta, Delta, shape)
+                a = flat_grad + self._Q_inv(flat_ef, delta, Delta)
                 
                 #Line 6 of pseudocode
                 flat_a = a.view(-1)
@@ -85,7 +85,7 @@ class MicroAdam(torch.optim.Optimizer):
                     device=flat_a.device
                 )
                 mask[topk_idx] = True
-                flat_a[topk_idx] = 0
+                flat_a[mask] = 0
                 
                 #Line 8 of pseudocode
                 delta = flat_a.min()
