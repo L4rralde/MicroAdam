@@ -1,9 +1,10 @@
 import torch
 import math
 
+from micro_adam.buffer import SparseGradBuffer
+
 
 qdtype = torch.uint8
-
 
 class MicroAdam(torch.optim.Optimizer):
     def __init__(
@@ -31,6 +32,29 @@ class MicroAdam(torch.optim.Optimizer):
 
         return x
 
+    @staticmethod
+    def adam_stats(
+        betas: tuple,
+        buffer: SparseGradBuffer,
+        step: int,
+        grad: torch.Tensor
+    ):
+        zm = torch.zeros_like(grad).view(-1)
+        zv = torch.zeros_like(grad).view(-1)
+        m = buffer.m
+        beta1, beta2 = betas
+        for i in range(min(step, m)):
+            r = (step - i)%m
+            topk_idx, topk_values = buffer[i]
+            zm[topk_idx] += beta1**r * topk_values
+            zv[topk_idx] += beta2**r * topk_values**2
+        zm = zm.view(grad.shape)
+        zv = zv.view(grad.shape)
+        return (
+            zm * (1 - beta1)/(1 - beta1**step),
+            zv * (1 - beta2)/(1 - beta2**step)
+        )
+
     def step(self, closure = None):
         #Closure is added for compatibility. Here is not used at all.
         loss = closure() if closure is not None else None
@@ -49,11 +73,10 @@ class MicroAdam(torch.optim.Optimizer):
                     #First step. Initialize adam
                     #Line 2 in pseudocode
                     state["step"] = 0
-                    state["exp_avg"] = torch.zeros_like(p.data) #m_0
-                    state["exp_avg_sq"] = torch.zeros_like(p.data) #v_0
                     state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype).view(-1) #e_1. Error feedback
                     state["delta"] = torch.tensor(0.0)
                     state["Delta"] = torch.tensor(0.0)
+                    state["g_buffer"] = SparseGradBuffer()
 
                 state["step"] += 1
 
@@ -61,7 +84,6 @@ class MicroAdam(torch.optim.Optimizer):
 
                 #Following snippet is Line 4 from pseudo code
                 grad = p.grad.data
-                shape = grad.shape
                 flat_grad = grad.view(-1)
                 k = grad.numel()//100 + 1
 
@@ -74,9 +96,7 @@ class MicroAdam(torch.optim.Optimizer):
                 flat_a = a.view(-1)
                 _, topk_idx = torch.topk(flat_a.abs(), k)
                 topk_values = flat_a[topk_idx]
-                flat_topk_grad = torch.zeros_like(flat_a)
-                flat_topk_grad[topk_idx] = topk_values
-                topk_grad = flat_topk_grad.view(shape)
+                state["g_buffer"].push((topk_idx, topk_values))
 
                 #Line 7 of pseudocode
                 mask = torch.zeros_like(
@@ -98,15 +118,18 @@ class MicroAdam(torch.optim.Optimizer):
                 state["Delta"] = Delta
 
                 #Adam update
-                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
-                exp_avg.mul_(beta1).add_(topk_grad, alpha=1 - beta1)
-                exp_avg_sq.mul_(beta2).addcmul_(topk_grad, topk_grad, value=1 - beta2)
+                mt, vt = MicroAdam.adam_stats(
+                    (beta1, beta2),
+                    state["g_buffer"],
+                    state["step"],
+                    grad
+                )
+                new_denom = vt.sqrt().add_(group['eps'])
 
-                denom = exp_avg_sq.sqrt().add_(group['eps'])
                 bias_correction1 = 1 - beta1 ** state['step']
                 bias_correction2 = 1 - beta2 ** state['step']
                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
 
-                p.data.addcdiv_(exp_avg, denom, value=-step_size)
+                p.data.addcdiv_(mt, new_denom, value=-step_size)
 
         return loss #Added for compatibility
