@@ -4,14 +4,17 @@ from torch.utils.data import Dataset, random_split
 
 class BreastCancerDatset(Dataset):
     def __init__(self, transforms=None):
-        self.data = load_breast_cancer()
+        dataset = load_breast_cancer()
+        X = dataset.data
+        self.X = (X - X.mean(axis=0))/X.std(axis=0)
+        self.y = dataset.target
         self.transform = transforms
 
     def __len__(self):
-        return len(self.data.data)
+        return self.X.shape[0]
 
     def __getitem__(self, idx):
-        return self.data.data[idx], self.data.target[idx]
+        return self.X[idx], self.y[idx]
 
 
 DATASET = BreastCancerDatset()
