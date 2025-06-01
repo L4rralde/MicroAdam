@@ -1,6 +1,6 @@
 import torch
-from torch.optim import Optimizer
-import math #really?
+import math
+
 
 qdtype = torch.uint8
 
@@ -10,11 +10,9 @@ class MicroAdam(torch.optim.Optimizer):
         self,
         params,
         lr = 1e-3, betas = (0.9, 0.999), eps=1e-8, k=10,
-        grad_sparsing = 100
     ):
         defaults = dict(lr=lr, betas=betas, eps=eps, k=k)
         super(MicroAdam, self).__init__(params, defaults)
-        self.grad_sparsing = grad_sparsing
 
     def _Q(self, x: torch.Tensor, delta: float, Delta: float) -> torch.Tensor:
         #Q procedure from pseudocode
