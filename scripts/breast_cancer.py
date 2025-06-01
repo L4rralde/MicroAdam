@@ -1,29 +1,24 @@
 import torch
 from torch import nn
-import torchvision
-import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
 
 from utils.utils import DEVICE
 from micro_adam.micro_adam import MicroAdam
+from dataset.breast_cancer import train_dataset, test_dataset
 
 
 class Mlp(nn.Module):
     def __init__(self):
         super().__init__()
-        self.flatten = nn.Flatten()
-        self.layers = nn.Sequential(
-            nn.Linear(28*28, 512),
+        self.layer = nn.Sequential(
+            nn.Linear(30, 8),
             nn.ReLU(),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Linear(128, 32),
-            nn.ReLU(),
-            nn.Linear(32, 10)
+            nn.Linear(8, 2),
         )
-    
+
     def forward(self, x):
-        x = self.flatten(x)
-        return self.layers(x)
+        x = x.float()
+        return self.layer(x)
 
 
 def train(
@@ -32,7 +27,8 @@ def train(
     val_dataloader: object,
     loss_fn: object,
     optimizer: object,
-    epochs=100
+    epochs=100,
+    verbose=True
 ):
     train_losses = []
     val_losses = []
@@ -71,7 +67,8 @@ def train(
                 num_val_elements += batch_size
         val_loss /= num_val_elements
         val_losses.append(val_loss)
-        print(f"Epoch: {epoch}. Training loss: {train_loss: .3e}. Validation loss: {val_loss: .3e}")
+        if verbose:
+            print(f"Epoch: {epoch}. Training loss: {train_loss: .3e}. Validation loss: {val_loss: .3e}")
 
     return train_losses, val_losses
 
@@ -80,19 +77,9 @@ def main():
     model = Mlp().to(DEVICE)
     loss_fn = nn.CrossEntropyLoss()
     optimizer = MicroAdam(model.parameters(), lr=1e-3)
-    
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
-    ])
-
-    batch_size = 64
-    trainset = torchvision.datasets.MNIST(root='./data/', train=True, download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
-
-    testset = torchvision.datasets.MNIST(root='./data/', train=False, download=True, transform=transform)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+    trainloader = DataLoader(train_dataset, batch_size=16)
+    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     train(
         model = model,
@@ -100,10 +87,9 @@ def main():
         val_dataloader = testloader,
         loss_fn = loss_fn,
         optimizer = optimizer,
-        epochs = 10
+        epochs = 1000
     )
 
 
 if __name__ == '__main__':
-    print(DEVICE)
     main()
