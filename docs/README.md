@@ -16,8 +16,14 @@ source .venv/bin/activate
 
 2. Install python modules
 
-```
+```bash
 pip install -r requirements.txt
+```
+
+3. Setup `PYTHONPATH`
+
+```bash
+source .bashrc
 ```
 
 
