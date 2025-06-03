@@ -1,7 +1,7 @@
 # MicroAdam
 
 
-Check our implementation of `MicroAdam` in pure pytorch in [micro_adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/micro_adam/micro_adam.py). Currently only supports CPU instructions.
+Check our implementation of [MicroAdam: Accurate Adaptive Optimization with Low Space Overhead and Provable Convergence](https://arxiv.org/pdf/2405.15593) in pure pytorch in [micro_adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/micro_adam/micro_adam.py). Currently only supports CPU instructions.
 
 We also implemented `Adam` to do fair runtime and memory comparisons. Check [adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/adam/adam.py).
 
@@ -119,7 +119,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle
 6. (Finally) train
 
 ```python
-train(
+train_losses, val_losses = train(
     model = model,
     train_dataloader = trainloader,
     val_dataloader = testloader,
@@ -136,3 +136,4 @@ train(
 - [ ] Train on larger problems.
 - [ ] Normal float
 - [ ] Make it compatible with Apple's Metal Performance Shaders
+- [ ] Clean up duplicates
