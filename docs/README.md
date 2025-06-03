@@ -128,3 +128,11 @@ train(
     epochs = 10
 )
 ```
+
+## Future Work
+
+- [ ] Make it cuda-compatible
+- [ ] Check cuda memory use
+- [ ] Train on larger problems.
+- [ ] Normal float
+- [ ] Make it compatible with Apple's Metal Performance Shaders
