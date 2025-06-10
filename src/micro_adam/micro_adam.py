@@ -101,7 +101,7 @@ class MicroAdam(torch.optim.Optimizer):
                 #Line 7 of pseudocode
                 mask = torch.zeros_like(flat_a, dtype=torch.bool)
                 mask[topk_idx] = True
-                #flat_a[mask] = 0
+                #flat_a[mask] = 0 #Sadly, this operation cannot be performed on MPS. Blame Apple for poor support
                 flat_a = torch.where(mask, torch.tensor(0, dtype=flat_a.dtype, device=flat_a.device), flat_a)
                 
                 #assert p.device == p.grad.device == flat_a.device, "Device mismatch"

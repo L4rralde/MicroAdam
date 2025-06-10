@@ -5,6 +5,11 @@ Check our implementation of [MicroAdam: Accurate Adaptive Optimization with Low 
 
 We also implemented `Adam` to do fair runtime and memory comparisons. Check [adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/adam/adam.py).
 
+## Latest release notes:
+
+- Tested with CPU, CUDA and MPS.
+
+
 ## How to install
 
 1. Create a virtual environment, e.g.,
@@ -137,9 +142,6 @@ train_losses, val_losses = train(
 
 ## Future Work
 
-- [ ] Make it cuda-compatible
 - [ ] Check cuda memory use
 - [ ] Train on larger problems.
 - [ ] Normal float
-- [ ] Make it compatible with Apple's Metal Performance Shaders
-- [ ] Clean up duplicates
