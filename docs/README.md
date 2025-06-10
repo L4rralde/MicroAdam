@@ -1,7 +1,7 @@
 # MicroAdam
 
 
-Check our implementation of [MicroAdam: Accurate Adaptive Optimization with Low Space Overhead and Provable Convergence](https://arxiv.org/pdf/2405.15593) in pure pytorch in [micro_adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/micro_adam/micro_adam.py). Currently only supports CPU instructions.
+Check our implementation of [MicroAdam: Accurate Adaptive Optimization with Low Space Overhead and Provable Convergence](https://arxiv.org/pdf/2405.15593) in pure pytorch in [micro_adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/micro_adam/micro_adam.py).
 
 We also implemented `Adam` to do fair runtime and memory comparisons. Check [adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/adam/adam.py).
 
