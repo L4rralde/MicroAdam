@@ -26,7 +26,7 @@ def main():
     optimizer = MicroAdam(model.parameters(), lr=1e-3)
 
     trainloader = DataLoader(train_dataset, batch_size=16)
-    testloader = torch.utils.data.DataLoader(test_dataset, batch_size=16, shuffle=False)
+    testloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     train(
         model = model,
@@ -34,7 +34,8 @@ def main():
         val_dataloader = testloader,
         loss_fn = loss_fn,
         optimizer = optimizer,
-        epochs = 1000
+        epochs = 1000,
+        device = DEVICE
     )
 
 

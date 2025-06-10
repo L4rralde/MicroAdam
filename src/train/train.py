@@ -12,6 +12,7 @@ def train(
     device: str="cpu",
     verbose: bool=True,
 ) -> tuple:
+    print(f"Training on {device}")
     train_losses = []
     val_losses = []
     for epoch in range(1, epochs + 1):

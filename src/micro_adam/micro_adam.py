@@ -74,8 +74,8 @@ class MicroAdam(torch.optim.Optimizer):
                     #Line 2 in pseudocode
                     state["step"] = 0
                     state["ef"] = torch.zeros_like(p.grad.data, dtype=qdtype).view(-1) #e_1. Error feedback
-                    state["delta"] = torch.tensor(0.0)
-                    state["Delta"] = torch.tensor(0.0)
+                    state["delta"] = torch.tensor(0.0, device=p.device)
+                    state["Delta"] = torch.tensor(0.0, device=p.device)
                     state["g_buffer"] = SparseGradBuffer()
 
                 state["step"] += 1
@@ -99,14 +99,15 @@ class MicroAdam(torch.optim.Optimizer):
                 state["g_buffer"].push((topk_idx, topk_values))
 
                 #Line 7 of pseudocode
-                mask = torch.zeros_like(
-                    flat_a,
-                    dtype=torch.bool,
-                    device=flat_a.device
-                )
+                mask = torch.zeros_like(flat_a, dtype=torch.bool)
                 mask[topk_idx] = True
-                flat_a[mask] = 0
+                #flat_a[mask] = 0
+                flat_a = torch.where(mask, torch.tensor(0, dtype=flat_a.dtype, device=flat_a.device), flat_a)
                 
+                #assert p.device == p.grad.device == flat_a.device, "Device mismatch"
+                #assert state["delta"].device == p.device, "delta on wrong device"
+                #assert state["Delta"].device == p.device, "Delta on wrong device"
+
                 #Line 8 of pseudocode
                 delta = flat_a.min()
                 Delta = flat_a.max()

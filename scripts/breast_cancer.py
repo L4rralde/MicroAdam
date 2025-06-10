@@ -36,7 +36,8 @@ def main():
         val_dataloader = testloader,
         loss_fn = loss_fn,
         optimizer = optimizer,
-        epochs = 1000
+        epochs = 1000,
+        device = DEVICE
     )
 
 

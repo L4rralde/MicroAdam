@@ -1,11 +1,12 @@
 from sklearn.datasets import load_breast_cancer
+import numpy as np
 from torch.utils.data import Dataset, random_split
 
 
 class BreastCancerDatset(Dataset):
     def __init__(self, transforms=None):
         dataset = load_breast_cancer()
-        X = dataset.data
+        X = dataset.data.astype(np.float32)
         self.X = (X - X.mean(axis=0))/X.std(axis=0)
         self.y = dataset.target
         self.transform = transforms
