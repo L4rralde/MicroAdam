@@ -1,3 +1,4 @@
 torch==2.7.0
 torchvision
 scikit-learn
+tqdm
