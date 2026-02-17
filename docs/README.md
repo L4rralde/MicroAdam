@@ -5,6 +5,11 @@ Check our implementation of [MicroAdam: Accurate Adaptive Optimization with Low 
 
 We also implemented `Adam` to do fair runtime and memory comparisons. Check [adam.py](https://github.com/L4rralde/MicroAdam/blob/main/src/adam/adam.py).
 
+## Technical report
+
+Read our technical report in spanish at the following [link](microadam_report.pdf).
+
+
 ## Latest release notes:
 
 - Tested with CPU, CUDA and MPS.
